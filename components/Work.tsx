@@ -1,15 +1,14 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
 import { Project } from '../types';
-import { Play, X, Upload, Plus, Trash2, FileVideo, Image as ImageIcon, Loader2, CloudIcon, AlertCircle, RefreshCw, Terminal, CheckCircle2, Database, Unlock, LogOut, GripVertical, ChevronDown } from 'lucide-react';
+import { Play, X, Upload, Plus, Trash2, FileVideo, Image as ImageIcon, Loader2, CloudIcon, AlertCircle, RefreshCw, CheckCircle2, Unlock, LogOut, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL: string = 'https://euznogckxiczgwkjxyuk.supabase.co';
 const SUPABASE_ANON_KEY: string = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1em5vZ2NreGljemd3a2p4eXVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxMzE3OTUsImV4cCI6MjA4MzcwNzc5NX0.BQP4qSG8-yzV4tHIBftxbreIEG2bQdbBY_qyFP5TdG0';
 
-// CHANGE THIS TO YOUR DESIRED PASSCODE
 const ADMIN_PASSCODE = "atif2024"; 
 
 const isConfigured = 
@@ -19,22 +18,29 @@ const isConfigured =
 
 const supabase = isConfigured ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
-const ProjectCard: React.FC<{ project: Project; onDelete: (id: string) => void; isAdmin: boolean }> = ({ project, onDelete, isAdmin }) => {
+const ProjectCard: React.FC<{ 
+  project: Project; 
+  onDelete: (id: string) => void; 
+  isAdmin: boolean;
+  onMove: (direction: 'prev' | 'next') => void;
+  isFirst: boolean;
+  isLast: boolean;
+}> = ({ project, onDelete, isAdmin, onMove, isFirst, isLast }) => {
   const [showVideo, setShowVideo] = useState(false);
-  const dragControls = useDragControls();
 
   return (
-    <Reorder.Item
-      value={project}
-      id={project.id}
-      dragControls={dragControls}
-      dragListener={false} // Only drag via handle
-      className="group relative bg-zinc-900/40 rounded-3xl border border-zinc-800/50 overflow-hidden flex flex-col select-none touch-pan-y"
-      whileDrag={{ 
-        scale: 1.02, 
-        boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
-        zIndex: 50
+    <motion.div
+      layout="position"
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.9 }}
+      transition={{ 
+        type: "spring", 
+        stiffness: 350, 
+        damping: 35,
+        opacity: { duration: 0.2 }
       }}
+      className="group relative bg-zinc-900/40 rounded-3xl border border-zinc-800/50 overflow-hidden flex flex-col select-none touch-pan-y"
     >
       <div className="relative aspect-video w-full bg-zinc-950">
         <AnimatePresence mode="wait">
@@ -97,17 +103,27 @@ const ProjectCard: React.FC<{ project: Project; onDelete: (id: string) => void; 
             ))}
           </div>
           {isAdmin && (
-            <div className="flex items-center gap-2">
-              <button 
-                onPointerDown={(e) => dragControls.start(e)}
-                className="p-2 text-zinc-600 hover:text-violet-400 cursor-grab active:cursor-grabbing transition-colors"
-                title="Move Project"
+            <div className="flex items-center gap-1">
+               <button 
+                onClick={(e) => { e.stopPropagation(); onMove('prev'); }}
+                disabled={isFirst}
+                className={`p-2 rounded-lg transition-colors ${isFirst ? 'text-zinc-800 cursor-not-allowed' : 'text-zinc-400 hover:text-violet-400 hover:bg-zinc-800'}`}
+                title="Move Left/Up"
               >
-                <GripVertical size={18} />
+                <ChevronLeft size={18} />
               </button>
               <button 
-                onClick={() => onDelete(project.id)}
-                className="p-2 text-zinc-600 hover:text-red-500 transition-colors"
+                onClick={(e) => { e.stopPropagation(); onMove('next'); }}
+                disabled={isLast}
+                className={`p-2 rounded-lg transition-colors ${isLast ? 'text-zinc-800 cursor-not-allowed' : 'text-zinc-400 hover:text-violet-400 hover:bg-zinc-800'}`}
+                title="Move Right/Down"
+              >
+                <ChevronRight size={18} />
+              </button>
+              <div className="w-[1px] h-4 bg-zinc-800 mx-1" />
+              <button 
+                onClick={(e) => { e.stopPropagation(); onDelete(project.id); }}
+                className="p-2 text-zinc-600 hover:text-red-500 hover:bg-zinc-800 rounded-lg transition-colors"
                 title="Delete Project"
               >
                 <Trash2 size={16} />
@@ -122,7 +138,7 @@ const ProjectCard: React.FC<{ project: Project; onDelete: (id: string) => void; 
           {project.description}
         </p>
       </div>
-    </Reorder.Item>
+    </motion.div>
   );
 };
 
@@ -133,7 +149,6 @@ const Work: React.FC = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [showSqlHelp, setShowSqlHelp] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [clickCount, setClickCount] = useState(0);
   
@@ -196,7 +211,7 @@ const Work: React.FC = () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      // ORDER BY id DESC to ensure newest uploads (highest IDs) are first
+      // Sort by ID descending = Upload Time Newest First
       const { data, error } = await supabase.from('projects').select('*').order('id', { ascending: false });
       if (error) throw error;
       setProjects((data || []).map(p => ({
@@ -212,6 +227,19 @@ const Work: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const moveProject = (index: number, direction: 'prev' | 'next') => {
+    const newProjects = [...projects];
+    const targetIndex = direction === 'prev' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newProjects.length) return;
+    
+    // Swap items in the local state array
+    const temp = newProjects[index];
+    newProjects[index] = newProjects[targetIndex];
+    newProjects[targetIndex] = temp;
+    
+    setProjects(newProjects);
   };
 
   const uploadToStorage = async (file: File, folder: string) => {
@@ -247,7 +275,6 @@ const Work: React.FC = () => {
       setNewProject({ title: '', description: '', tags: '', videoFile: null, thumbFile: null, previewThumb: '' });
     } catch (err: any) {
       setErrorMessage(`DATABASE ERROR: ${err.message}`);
-      setShowSqlHelp(true);
     } finally {
       setIsUploading(false);
     }
@@ -264,7 +291,7 @@ const Work: React.FC = () => {
     }
   };
 
-  const visibleProjects = isAdmin ? projects : projects.slice(0, visibleCount);
+  const displayedProjects = isAdmin ? projects : projects.slice(0, visibleCount);
 
   if (!isConfigured) {
     return (
@@ -319,7 +346,7 @@ const Work: React.FC = () => {
         {errorMessage && isAdmin && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
             <div className="p-8 bg-red-500/5 border border-red-500/20 rounded-[2.5rem]">
-              <div className="flex items-start gap-4 text-red-400 mb-6">
+              <div className="flex items-start gap-4 text-red-400">
                 <AlertCircle size={24} className="shrink-0 mt-1" />
                 <div className="flex-1">
                   <p className="font-bold text-lg">System Alert</p>
@@ -343,18 +370,31 @@ const Work: React.FC = () => {
             {isAdmin && <button onClick={() => setIsAdding(true)} className="mt-6 px-8 py-3 bg-zinc-900 border border-zinc-800 text-white rounded-full hover:bg-zinc-800 transition-colors">Create First Project</button>}
           </div>
         ) : (
-          <>
-            <Reorder.Group axis="y" values={projects} onReorder={isAdmin ? setProjects : () => {}} className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-              {visibleProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} onDelete={deleteProject} isAdmin={isAdmin} />
-              ))}
-            </Reorder.Group>
+          <div className="space-y-16">
+            <motion.div 
+              layout
+              className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12"
+            >
+              <AnimatePresence initial={false}>
+                {displayedProjects.map((project, index) => (
+                  <ProjectCard 
+                    key={project.id} 
+                    project={project} 
+                    onDelete={deleteProject} 
+                    isAdmin={isAdmin} 
+                    onMove={(dir) => moveProject(index, dir)}
+                    isFirst={index === 0}
+                    isLast={index === projects.length - 1}
+                  />
+                ))}
+              </AnimatePresence>
+            </motion.div>
 
             {!isAdmin && projects.length > visibleCount && (
               <motion.div 
                 initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="mt-16 flex justify-center"
+                whileInView={{ opacity: 1 }}
+                className="flex justify-center"
               >
                 <button 
                   onClick={() => setVisibleCount(prev => prev + 6)}
@@ -367,7 +407,7 @@ const Work: React.FC = () => {
                 </button>
               </motion.div>
             )}
-          </>
+          </div>
         )}
 
         <AnimatePresence>
