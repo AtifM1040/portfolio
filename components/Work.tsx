@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
 import { Project } from '../types';
-import { Play, X, Upload, Plus, Trash2, FileVideo, Image as ImageIcon, Loader2, CloudIcon, AlertCircle, RefreshCw, Terminal, CheckCircle2, Database, Unlock, LogOut } from 'lucide-react';
+import { Play, X, Upload, Plus, Trash2, FileVideo, Image as ImageIcon, Loader2, CloudIcon, AlertCircle, RefreshCw, Terminal, CheckCircle2, Database, Unlock, LogOut, GripVertical, ChevronDown } from 'lucide-react';
 
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL: string = 'https://euznogckxiczgwkjxyuk.supabase.co';
@@ -28,7 +28,7 @@ const ProjectCard: React.FC<{ project: Project; onDelete: (id: string) => void; 
       value={project}
       id={project.id}
       dragControls={dragControls}
-      dragListener={isAdmin && !showVideo}
+      dragListener={false} // Only drag via handle
       className="group relative bg-zinc-900/40 rounded-3xl border border-zinc-800/50 overflow-hidden flex flex-col select-none touch-pan-y"
       whileDrag={{ 
         scale: 1.02, 
@@ -97,12 +97,22 @@ const ProjectCard: React.FC<{ project: Project; onDelete: (id: string) => void; 
             ))}
           </div>
           {isAdmin && (
-            <button 
-              onClick={() => onDelete(project.id)}
-              className="p-2 text-zinc-600 hover:text-red-500 transition-colors"
-            >
-              <Trash2 size={16} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onPointerDown={(e) => dragControls.start(e)}
+                className="p-2 text-zinc-600 hover:text-violet-400 cursor-grab active:cursor-grabbing transition-colors"
+                title="Move Project"
+              >
+                <GripVertical size={18} />
+              </button>
+              <button 
+                onClick={() => onDelete(project.id)}
+                className="p-2 text-zinc-600 hover:text-red-500 transition-colors"
+                title="Delete Project"
+              >
+                <Trash2 size={16} />
+              </button>
+            </div>
           )}
         </div>
         <h3 className="text-2xl font-bold mb-2 group-hover:text-violet-400 transition-colors">
@@ -118,6 +128,7 @@ const ProjectCard: React.FC<{ project: Project; onDelete: (id: string) => void; 
 
 const Work: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [visibleCount, setVisibleCount] = useState(6);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -147,7 +158,6 @@ const Work: React.FC = () => {
     else setIsLoading(false);
   }, []);
 
-  // Hidden Trigger: Reset click count after 3 seconds of inactivity
   useEffect(() => {
     const timer = setTimeout(() => setClickCount(0), 3000);
     return () => clearTimeout(timer);
@@ -186,6 +196,7 @@ const Work: React.FC = () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
+      // ORDER BY id DESC to ensure newest uploads (highest IDs) are first
       const { data, error } = await supabase.from('projects').select('*').order('id', { ascending: false });
       if (error) throw error;
       setProjects((data || []).map(p => ({
@@ -253,6 +264,8 @@ const Work: React.FC = () => {
     }
   };
 
+  const visibleProjects = isAdmin ? projects : projects.slice(0, visibleCount);
+
   if (!isConfigured) {
     return (
       <section className="py-24 bg-zinc-950 text-center px-6">
@@ -314,37 +327,6 @@ const Work: React.FC = () => {
                 </div>
                 <button onClick={fetchProjects} className="p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors"><RefreshCw size={18} /></button>
               </div>
-
-              {showSqlHelp && (
-                <div className="space-y-6">
-                  <div className="p-6 bg-zinc-900/80 rounded-2xl border border-zinc-800">
-                    <div className="flex items-center gap-2 mb-4 text-violet-400 font-bold uppercase text-[10px] tracking-widest">
-                      <Database size={14} /> Step 1: Ensure Table Structure
-                    </div>
-                    <pre className="text-[10px] text-zinc-400 font-mono bg-black/50 p-4 rounded-xl border border-zinc-800 overflow-x-auto">
-{`create table if not exists projects (
-  id bigserial primary key,
-  created_at timestamptz default now(),
-  title text not null,
-  description text,
-  video_url text,
-  thumb_url text,
-  tags text[]
-);`}
-                    </pre>
-                  </div>
-                  <div className="p-6 bg-zinc-900/80 rounded-2xl border border-zinc-800">
-                    <div className="flex items-center gap-2 mb-4 text-violet-400 font-bold uppercase text-[10px] tracking-widest">
-                      <Terminal size={14} /> Step 2: Fix RLS Permissions
-                    </div>
-                    <pre className="text-[10px] text-zinc-400 font-mono bg-black/50 p-4 rounded-xl border border-zinc-800 overflow-x-auto">
-{`alter table projects enable row level security;
-create policy "Allow All" on projects for all to anon using (true) with check (true);
-create policy "Allow Storage" on storage.objects for all to anon using (bucket_id = 'videos') with check (bucket_id = 'videos');`}
-                    </pre>
-                  </div>
-                </div>
-              )}
             </div>
           </motion.div>
         )}
@@ -361,11 +343,31 @@ create policy "Allow Storage" on storage.objects for all to anon using (bucket_i
             {isAdmin && <button onClick={() => setIsAdding(true)} className="mt-6 px-8 py-3 bg-zinc-900 border border-zinc-800 text-white rounded-full hover:bg-zinc-800 transition-colors">Create First Project</button>}
           </div>
         ) : (
-          <Reorder.Group axis="y" values={projects} onReorder={isAdmin ? setProjects : () => {}} className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} onDelete={deleteProject} isAdmin={isAdmin} />
-            ))}
-          </Reorder.Group>
+          <>
+            <Reorder.Group axis="y" values={projects} onReorder={isAdmin ? setProjects : () => {}} className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
+              {visibleProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} onDelete={deleteProject} isAdmin={isAdmin} />
+              ))}
+            </Reorder.Group>
+
+            {!isAdmin && projects.length > visibleCount && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-16 flex justify-center"
+              >
+                <button 
+                  onClick={() => setVisibleCount(prev => prev + 6)}
+                  className="group flex flex-col items-center gap-3 text-zinc-500 hover:text-white transition-colors"
+                >
+                  <span className="text-[10px] font-bold uppercase tracking-[0.4em]">View More Work</span>
+                  <div className="w-12 h-12 rounded-full border border-zinc-800 flex items-center justify-center group-hover:bg-zinc-900 group-hover:border-zinc-700 transition-all">
+                    <ChevronDown size={20} className="group-hover:translate-y-0.5 transition-transform" />
+                  </div>
+                </button>
+              </motion.div>
+            )}
+          </>
         )}
 
         <AnimatePresence>
