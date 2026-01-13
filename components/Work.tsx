@@ -9,7 +9,7 @@ import { Play, X, Upload, Plus, Trash2, FileVideo, Image as ImageIcon, Loader2, 
 const SUPABASE_URL: string = 'https://euznogckxiczgwkjxyuk.supabase.co';
 const SUPABASE_ANON_KEY: string = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1em5vZ2NreGljemd3a2p4eXVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxMzE3OTUsImV4cCI6MjA4MzcwNzc5NX0.BQP4qSG8-yzV4tHIBftxbreIEG2bQdbBY_qyFP5TdG0';
 
-const ADMIN_PASSCODE = "atif2024"; 
+const ADMIN_PASSCODE = "atif1040"; 
 
 const isConfigured = 
   SUPABASE_URL !== 'https://YOUR_PROJECT_REF.supabase.co' && 
