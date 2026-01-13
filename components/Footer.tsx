@@ -25,7 +25,7 @@ const Footer: React.FC = () => {
                 <div className="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center">
                   <Mail size={18} className="text-violet-400" />
                 </div>
-                <a href="mailto:contact@atifmustafa.com" className="hover:text-white transition-colors">contact@atifmustafa.com</a>
+                <a href="mailto:atiff.services@gmail.com" className="hover:text-white transition-colors">atiff.services@gmail.com</a>
               </div>
               <div className="flex items-center gap-4 text-zinc-300">
                 <div className="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center">
@@ -41,10 +41,10 @@ const Footer: React.FC = () => {
               <h4 className="text-sm font-bold uppercase tracking-widest text-zinc-500 mb-6">Services</h4>
               <ul className="space-y-4 text-zinc-300">
                 <li className="flex items-center gap-2 hover:translate-x-1 transition-transform cursor-default">
-                  <ArrowUpRight size={14} className="text-violet-500" /> Commercial Editing
+                  <ArrowUpRight size={14} className="text-violet-500" /> Video Editing
                 </li>
                 <li className="flex items-center gap-2 hover:translate-x-1 transition-transform cursor-default">
-                  <ArrowUpRight size={14} className="text-violet-500" /> Social Content Mastery
+                  <ArrowUpRight size={14} className="text-violet-500" /> UGC / B-roll / A-Roll
                 </li>
                 <li className="flex items-center gap-2 hover:translate-x-1 transition-transform cursor-default">
                   <ArrowUpRight size={14} className="text-violet-500" /> Color Grading
