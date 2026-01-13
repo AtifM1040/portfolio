@@ -36,8 +36,8 @@ const ProjectCard: React.FC<{
       exit={{ opacity: 0, scale: 0.9 }}
       transition={{ 
         type: "spring", 
-        stiffness: 350, 
-        damping: 35,
+        stiffness: 400, 
+        damping: 40,
         opacity: { duration: 0.2 }
       }}
       className="group relative bg-zinc-900/40 rounded-3xl border border-zinc-800/50 overflow-hidden flex flex-col select-none touch-pan-y"
@@ -108,7 +108,7 @@ const ProjectCard: React.FC<{
                 onClick={(e) => { e.stopPropagation(); onMove('prev'); }}
                 disabled={isFirst}
                 className={`p-2 rounded-lg transition-colors ${isFirst ? 'text-zinc-800 cursor-not-allowed' : 'text-zinc-400 hover:text-violet-400 hover:bg-zinc-800'}`}
-                title="Move Left/Up"
+                title="Move Up/Left"
               >
                 <ChevronLeft size={18} />
               </button>
@@ -116,7 +116,7 @@ const ProjectCard: React.FC<{
                 onClick={(e) => { e.stopPropagation(); onMove('next'); }}
                 disabled={isLast}
                 className={`p-2 rounded-lg transition-colors ${isLast ? 'text-zinc-800 cursor-not-allowed' : 'text-zinc-400 hover:text-violet-400 hover:bg-zinc-800'}`}
-                title="Move Right/Down"
+                title="Move Down/Right"
               >
                 <ChevronRight size={18} />
               </button>
@@ -211,8 +211,8 @@ const Work: React.FC = () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      // Sort by ID descending = Upload Time Newest First
-      const { data, error } = await supabase.from('projects').select('*').order('id', { ascending: false });
+      // ORDER BY sort_order DESC to ensure custom order and newest first
+      const { data, error } = await supabase.from('projects').select('*').order('sort_order', { ascending: false });
       if (error) throw error;
       setProjects((data || []).map(p => ({
         id: String(p.id),
@@ -220,7 +220,8 @@ const Work: React.FC = () => {
         description: p.description || '',
         videoUrl: p.video_url || '',
         thumbnail: p.thumb_url || '',
-        tags: Array.isArray(p.tags) ? p.tags : []
+        tags: Array.isArray(p.tags) ? p.tags : [],
+        sortOrder: p.sort_order ?? 0
       })));
     } catch (err: any) {
       setErrorMessage(err.message || 'Connection failed.');
@@ -229,17 +230,37 @@ const Work: React.FC = () => {
     }
   };
 
-  const moveProject = (index: number, direction: 'prev' | 'next') => {
+  const saveOrderToDb = async (updatedProjects: Project[]) => {
+    if (!supabase) return;
+    try {
+      // Update all items whose order changed
+      const updates = updatedProjects.map((p, idx) => ({
+        id: p.id,
+        sort_order: updatedProjects.length - idx // High order at the start of array
+      }));
+
+      for (const update of updates) {
+        await supabase.from('projects').update({ sort_order: update.sort_order }).eq('id', update.id);
+      }
+    } catch (err) {
+      console.error("Failed to save order:", err);
+    }
+  };
+
+  const moveProject = async (index: number, direction: 'prev' | 'next') => {
     const newProjects = [...projects];
     const targetIndex = direction === 'prev' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= newProjects.length) return;
     
-    // Swap items in the local state array
+    // Physical Swap in state
     const temp = newProjects[index];
     newProjects[index] = newProjects[targetIndex];
     newProjects[targetIndex] = temp;
     
     setProjects(newProjects);
+
+    // Persist to DB
+    await saveOrderToDb(newProjects);
   };
 
   const uploadToStorage = async (file: File, folder: string) => {
@@ -261,12 +282,16 @@ const Work: React.FC = () => {
       const vUrl = await uploadToStorage(newProject.videoFile, 'raw');
       const tUrl = await uploadToStorage(newProject.thumbFile, 'thumbs');
 
+      // Calculate new sort_order (highest current + 1) to keep it at top
+      const maxSort = projects.length > 0 ? Math.max(...projects.map(p => p.sortOrder || 0)) : 0;
+
       const { error } = await supabase.from('projects').insert([{
         title: newProject.title,
         description: newProject.description,
         video_url: vUrl,
         thumb_url: tUrl,
-        tags: newProject.tags.split(',').map(t => t.trim()).filter(Boolean)
+        tags: newProject.tags.split(',').map(t => t.trim()).filter(Boolean),
+        sort_order: maxSort + 1
       }]);
 
       if (error) throw error;
@@ -274,7 +299,7 @@ const Work: React.FC = () => {
       setIsAdding(false);
       setNewProject({ title: '', description: '', tags: '', videoFile: null, thumbFile: null, previewThumb: '' });
     } catch (err: any) {
-      setErrorMessage(`DATABASE ERROR: ${err.message}`);
+      setErrorMessage(`DATABASE ERROR: ${err.message}. Did you add the sort_order column?`);
     } finally {
       setIsUploading(false);
     }
@@ -350,7 +375,9 @@ const Work: React.FC = () => {
                 <AlertCircle size={24} className="shrink-0 mt-1" />
                 <div className="flex-1">
                   <p className="font-bold text-lg">System Alert</p>
-                  <code className="text-xs bg-black/40 p-2 mt-2 rounded block border border-red-500/10">{errorMessage}</code>
+                  <p className="text-sm opacity-80 mb-3">To enable permanent sorting, run this in Supabase SQL Editor:</p>
+                  <code className="text-xs bg-black/40 p-3 rounded block border border-red-500/10 mb-4">ALTER TABLE projects ADD COLUMN sort_order INTEGER DEFAULT 0;</code>
+                  <code className="text-xs bg-black/40 p-2 rounded block border border-red-500/10">{errorMessage}</code>
                 </div>
                 <button onClick={fetchProjects} className="p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors"><RefreshCw size={18} /></button>
               </div>
