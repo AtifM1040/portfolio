@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@supabase/supabase-js';
 import { Project } from '../types';
-import { Play, X, Upload, Plus, Trash2, FileVideo, Image as ImageIcon, Loader2, CloudIcon, AlertCircle, RefreshCw, CheckCircle2, Unlock, LogOut, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Play, X, Upload, Plus, Trash2, FileVideo, Image as ImageIcon, Loader2, CloudIcon, AlertCircle, RefreshCw, CheckCircle2, Unlock, LogOut, ChevronDown, ChevronLeft, ChevronRight, Lock, KeyRound } from 'lucide-react';
 
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL: string = 'https://euznogckxiczgwkjxyuk.supabase.co';
@@ -152,6 +152,11 @@ const Work: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [clickCount, setClickCount] = useState(0);
   
+  // Custom Login State
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [enteredPass, setEnteredPass] = useState('');
+  const [loginError, setLoginError] = useState(false);
+
   const [newProject, setNewProject] = useState({
     title: '',
     description: '',
@@ -163,6 +168,7 @@ const Work: React.FC = () => {
 
   const videoInputRef = useRef<HTMLInputElement>(null);
   const thumbInputRef = useRef<HTMLInputElement>(null);
+  const loginInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const savedAdmin = localStorage.getItem('portfolio_admin_v1');
@@ -178,31 +184,40 @@ const Work: React.FC = () => {
     return () => clearTimeout(timer);
   }, [clickCount]);
 
+  // Focus login input when modal opens
+  useEffect(() => {
+    if (isLoginModalOpen) {
+      setTimeout(() => loginInputRef.current?.focus(), 100);
+    }
+  }, [isLoginModalOpen]);
+
   const handleTitleClick = () => {
     const newCount = clickCount + 1;
     setClickCount(newCount);
     if (newCount >= 5) {
       setClickCount(0);
-      handleAdminLogin();
+      if (isAdmin) {
+        if (confirm('Log out of Admin mode?')) {
+          setIsAdmin(false);
+          localStorage.removeItem('portfolio_admin_v1');
+        }
+      } else {
+        setIsLoginModalOpen(true);
+      }
     }
   };
 
-  const handleAdminLogin = () => {
-    if (isAdmin) {
-      if (confirm('Log out of Admin mode?')) {
-        setIsAdmin(false);
-        localStorage.removeItem('portfolio_admin_v1');
-      }
-      return;
-    }
-
-    const pass = prompt("Enter Secret Passcode:");
-    if (pass === ADMIN_PASSCODE) {
+  const handleLoginSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (enteredPass === ADMIN_PASSCODE) {
       setIsAdmin(true);
       localStorage.setItem('portfolio_admin_v1', 'true');
-      alert("Welcome back, Atif.");
-    } else if (pass !== null) {
-      alert("Access Denied.");
+      setIsLoginModalOpen(false);
+      setEnteredPass('');
+      setLoginError(false);
+    } else {
+      setLoginError(true);
+      setTimeout(() => setLoginError(false), 500);
     }
   };
 
@@ -211,7 +226,6 @@ const Work: React.FC = () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      // ORDER BY sort_order DESC to ensure custom order and newest first
       const { data, error } = await supabase.from('projects').select('*').order('sort_order', { ascending: false });
       if (error) throw error;
       setProjects((data || []).map(p => ({
@@ -233,10 +247,9 @@ const Work: React.FC = () => {
   const saveOrderToDb = async (updatedProjects: Project[]) => {
     if (!supabase) return;
     try {
-      // Update all items whose order changed
       const updates = updatedProjects.map((p, idx) => ({
         id: p.id,
-        sort_order: updatedProjects.length - idx // High order at the start of array
+        sort_order: updatedProjects.length - idx
       }));
 
       for (const update of updates) {
@@ -252,14 +265,11 @@ const Work: React.FC = () => {
     const targetIndex = direction === 'prev' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= newProjects.length) return;
     
-    // Physical Swap in state
     const temp = newProjects[index];
     newProjects[index] = newProjects[targetIndex];
     newProjects[targetIndex] = temp;
     
     setProjects(newProjects);
-
-    // Persist to DB
     await saveOrderToDb(newProjects);
   };
 
@@ -282,7 +292,6 @@ const Work: React.FC = () => {
       const vUrl = await uploadToStorage(newProject.videoFile, 'raw');
       const tUrl = await uploadToStorage(newProject.thumbFile, 'thumbs');
 
-      // Calculate new sort_order (highest current + 1) to keep it at top
       const maxSort = projects.length > 0 ? Math.max(...projects.map(p => p.sortOrder || 0)) : 0;
 
       const { error } = await supabase.from('projects').insert([{
@@ -299,7 +308,7 @@ const Work: React.FC = () => {
       setIsAdding(false);
       setNewProject({ title: '', description: '', tags: '', videoFile: null, thumbFile: null, previewThumb: '' });
     } catch (err: any) {
-      setErrorMessage(`DATABASE ERROR: ${err.message}. Did you add the sort_order column?`);
+      setErrorMessage(`DATABASE ERROR: ${err.message}.`);
     } finally {
       setIsUploading(false);
     }
@@ -333,6 +342,7 @@ const Work: React.FC = () => {
   return (
     <section id="work" className="py-24 px-6 bg-zinc-950">
       <div className="max-w-6xl mx-auto">
+        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
           <div>
             <div className="flex items-center gap-3 mb-4">
@@ -344,7 +354,7 @@ const Work: React.FC = () => {
             <div className="flex items-center gap-4">
               <p 
                 onClick={handleTitleClick}
-                className="text-4xl md:text-6xl font-extrabold tracking-tighter cursor-default select-none active:opacity-80 transition-opacity"
+                className="text-4xl md:text-6xl font-extrabold tracking-tighter cursor-pointer select-none active:opacity-80 transition-opacity"
               >
                 Portfolio
               </p>
@@ -361,30 +371,14 @@ const Work: React.FC = () => {
               <button onClick={() => setIsAdding(true)} className="flex items-center gap-2 px-8 py-4 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-2xl transition-all shadow-lg shadow-violet-600/20">
                 <Plus size={20} /> Add Project
               </button>
-              <button onClick={handleAdminLogin} className="p-4 bg-zinc-900 text-zinc-400 hover:text-white rounded-2xl border border-zinc-800 transition-colors" title="Logout">
+              <button onClick={() => { setIsAdmin(false); localStorage.removeItem('portfolio_admin_v1'); }} className="p-4 bg-zinc-900 text-zinc-400 hover:text-white rounded-2xl border border-zinc-800 transition-colors" title="Logout">
                 <LogOut size={20} />
               </button>
             </motion.div>
           )}
         </div>
 
-        {errorMessage && isAdmin && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
-            <div className="p-8 bg-red-500/5 border border-red-500/20 rounded-[2.5rem]">
-              <div className="flex items-start gap-4 text-red-400">
-                <AlertCircle size={24} className="shrink-0 mt-1" />
-                <div className="flex-1">
-                  <p className="font-bold text-lg">System Alert</p>
-                  <p className="text-sm opacity-80 mb-3">To enable permanent sorting, run this in Supabase SQL Editor:</p>
-                  <code className="text-xs bg-black/40 p-3 rounded block border border-red-500/10 mb-4">ALTER TABLE projects ADD COLUMN sort_order INTEGER DEFAULT 0;</code>
-                  <code className="text-xs bg-black/40 p-2 rounded block border border-red-500/10">{errorMessage}</code>
-                </div>
-                <button onClick={fetchProjects} className="p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors"><RefreshCw size={18} /></button>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
+        {/* Content Area */}
         {isLoading ? (
           <div className="py-20 flex flex-col items-center text-zinc-600">
             <Loader2 className="animate-spin mb-4" size={40} />
@@ -398,10 +392,7 @@ const Work: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-16">
-            <motion.div 
-              layout
-              className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12"
-            >
+            <motion.div layout className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
               <AnimatePresence initial={false}>
                 {displayedProjects.map((project, index) => (
                   <ProjectCard 
@@ -418,15 +409,8 @@ const Work: React.FC = () => {
             </motion.div>
 
             {!isAdmin && projects.length > visibleCount && (
-              <motion.div 
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                className="flex justify-center"
-              >
-                <button 
-                  onClick={() => setVisibleCount(prev => prev + 6)}
-                  className="group flex flex-col items-center gap-3 text-zinc-500 hover:text-white transition-colors"
-                >
+              <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} className="flex justify-center">
+                <button onClick={() => setVisibleCount(prev => prev + 6)} className="group flex flex-col items-center gap-3 text-zinc-500 hover:text-white transition-colors">
                   <span className="text-[10px] font-bold uppercase tracking-[0.4em]">View More Work</span>
                   <div className="w-12 h-12 rounded-full border border-zinc-800 flex items-center justify-center group-hover:bg-zinc-900 group-hover:border-zinc-700 transition-all">
                     <ChevronDown size={20} className="group-hover:translate-y-0.5 transition-transform" />
@@ -437,7 +421,82 @@ const Work: React.FC = () => {
           </div>
         )}
 
+        {/* MODALS */}
         <AnimatePresence>
+          {/* Admin Login Modal */}
+          {isLoginModalOpen && (
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="fixed inset-0 z-[200] bg-black/80 backdrop-blur-md flex items-center justify-center p-6"
+              onClick={() => setIsLoginModalOpen(false)}
+            >
+              <motion.div 
+                initial={{ scale: 0.9, y: 20, opacity: 0 }} 
+                animate={{ 
+                  scale: 1, 
+                  y: 0, 
+                  opacity: 1,
+                  x: loginError ? [0, -10, 10, -10, 10, 0] : 0 
+                }} 
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                className="bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] w-full max-w-sm shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden"
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Gradient Accent */}
+                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-violet-600 to-blue-600 opacity-50" />
+                
+                <div className="flex justify-between items-center mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-violet-600/10 rounded-lg text-violet-500">
+                      <Lock size={18} />
+                    </div>
+                    <h3 className="text-xl font-bold">Admin Access</h3>
+                  </div>
+                  <button onClick={() => setIsLoginModalOpen(false)} className="text-zinc-500 hover:text-white transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
+                
+                <p className="text-zinc-500 text-sm mb-6 leading-relaxed">
+                  Please enter the secret passcode to unlock administrative features.
+                </p>
+
+                <form onSubmit={handleLoginSubmit} className="space-y-4">
+                  <div className="relative group">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600 group-focus-within:text-violet-500 transition-colors">
+                      <KeyRound size={16} />
+                    </div>
+                    <input 
+                      ref={loginInputRef}
+                      type="password"
+                      placeholder="Enter Passcode..."
+                      className={`w-full bg-zinc-950 border ${loginError ? 'border-red-500/50 focus:border-red-500' : 'border-zinc-800 focus:border-violet-500'} rounded-xl pl-12 pr-4 py-3.5 outline-none transition-all`}
+                      value={enteredPass}
+                      onChange={e => setEnteredPass(e.target.value)}
+                    />
+                  </div>
+                  
+                  {loginError && (
+                    <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-red-500 text-[10px] font-bold uppercase tracking-widest text-center">
+                      Incorrect Passcode
+                    </motion.p>
+                  )}
+
+                  <button 
+                    type="submit"
+                    className="w-full py-4 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-violet-600/20 active:scale-95"
+                  >
+                    Verify & Unlock
+                  </button>
+                </form>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {/* Add Project Modal */}
           {isAdding && isAdmin && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-6">
               <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
