@@ -37,26 +37,26 @@ const Hero: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="text-violet-400 font-medium tracking-widest uppercase text-sm mb-6"
+          className="text-violet-400 font-medium tracking-widest uppercase text-[10px] md:text-sm mb-8 md:mb-6"
         >
-          Professional Video Editor & Content Creator
+          Professional Video Editor & Createivist
         </motion.p>
         
         <motion.h1
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.3 }}
-          className="text-6xl md:text-8xl lg:text-9xl font-extrabold tracking-tight mb-8 leading-none"
+          className="text-5xl md:text-8xl lg:text-9xl font-extrabold tracking-tight mb-8 leading-[1.1] md:leading-none"
         >
           Atif Mustafa<br />
-          <span className="text-zinc-500 text-5xl md:text-7xl block mt-4 font-medium italic">Visual Storyteller</span>
+          <span className="text-zinc-500 text-3xl md:text-7xl block mt-6 md:mt-4 font-medium italic">Visual Storyteller</span>
         </motion.h1>
 
         <motion.p
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
-          className="text-zinc-400 text-lg md:text-xl max-w-2xl mx-auto mb-10 font-light leading-relaxed"
+          className="text-zinc-400 text-base md:text-xl max-w-2xl mx-auto mb-12 md:mb-10 font-light leading-relaxed"
         >
           Transforming raw footage into high-impact narratives. Expert in cinematic editing, dynamic transitions, and immersive sound design.
         </motion.p>
@@ -69,13 +69,13 @@ const Hero: React.FC = () => {
         >
           <button 
             onClick={() => scrollToSection('work')}
-            className="px-8 py-4 bg-zinc-100 text-zinc-950 font-bold rounded-full hover:bg-white transition-all transform hover:scale-105 active:scale-95 duration-200"
+            className="w-full sm:w-auto px-8 py-4 bg-zinc-100 text-zinc-950 font-bold rounded-full hover:bg-white transition-all transform hover:scale-105 active:scale-95 duration-200"
           >
             View My Portfolio
           </button>
           <button 
             onClick={() => scrollToSection('contact')}
-            className="px-8 py-4 bg-zinc-900 border border-zinc-800 text-zinc-100 font-bold rounded-full hover:bg-zinc-800 transition-all duration-200"
+            className="w-full sm:w-auto px-8 py-4 bg-zinc-900 border border-zinc-800 text-zinc-100 font-bold rounded-full hover:bg-zinc-800 transition-all duration-200"
           >
             Work with Me
           </button>
@@ -86,7 +86,7 @@ const Hero: React.FC = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1.5, duration: 1 }}
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 cursor-pointer"
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 cursor-pointer hidden md:block"
         onClick={() => scrollToSection('tools')}
       >
         <div className="w-[1px] h-16 bg-gradient-to-b from-transparent via-zinc-700 to-transparent flex items-center justify-center overflow-hidden">
