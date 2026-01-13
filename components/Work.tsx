@@ -29,7 +29,7 @@ const ProjectCard: React.FC<{ project: Project; onDelete: (id: string) => void; 
       id={project.id}
       dragControls={dragControls}
       dragListener={isAdmin && !showVideo}
-      className="group relative bg-zinc-900/40 rounded-3xl border border-zinc-800/50 overflow-hidden flex flex-col select-none touch-none"
+      className="group relative bg-zinc-900/40 rounded-3xl border border-zinc-800/50 overflow-hidden flex flex-col select-none touch-pan-y"
       whileDrag={{ 
         scale: 1.02, 
         boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
