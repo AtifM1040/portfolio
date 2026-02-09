@@ -9,11 +9,11 @@ import { Play, X, Upload, Plus, Trash2, FileVideo, Image as ImageIcon, Loader2, 
 const SUPABASE_URL: string = 'https://euznogckxiczgwkjxyuk.supabase.co';
 const SUPABASE_ANON_KEY: string = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1em5vZ2NreGljemd3a2p4eXVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxMzE3OTUsImV4cCI6MjA4MzcwNzc5NX0.BQP4qSG8-yzV4tHIBftxbreIEG2bQdbBY_qyFP5TdG0';
 
-const ADMIN_PASSCODE = "atif1040"; 
+const ADMIN_PASSCODE = "atif2024"; 
 
 const isConfigured = 
-  SUPABASE_URL !== 'https://euznogckxiczgwkjxyuk.supabase.co' && 
-  SUPABASE_ANON_KEY !== 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1em5vZ2NreGljemd3a2p4eXVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxMzE3OTUsImV4cCI6MjA4MzcwNzc5NX0.BQP4qSG8-yzV4tHIBftxbreIEG2bQdbBY_qyFP5TdG0' &&
+  SUPABASE_URL !== 'https://YOUR_PROJECT_REF.supabase.co' && 
+  SUPABASE_ANON_KEY !== 'YOUR_ANON_KEY' &&
   SUPABASE_ANON_KEY.length > 50;
 
 const supabase = isConfigured ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
@@ -184,10 +184,9 @@ const Work: React.FC = () => {
     return () => clearTimeout(timer);
   }, [clickCount]);
 
-  // Focus login input when modal opens
   useEffect(() => {
     if (isLoginModalOpen) {
-      setTimeout(() => loginInputRef.current?.focus(), 100);
+      setTimeout(() => loginInputRef.current?.focus(), 150);
     }
   }, [isLoginModalOpen]);
 
@@ -226,8 +225,13 @@ const Work: React.FC = () => {
     setIsLoading(true);
     setErrorMessage(null);
     try {
-      const { data, error } = await supabase.from('projects').select('*').order('sort_order', { ascending: false });
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .order('sort_order', { ascending: false });
+      
       if (error) throw error;
+      
       setProjects((data || []).map(p => ({
         id: String(p.id),
         title: p.title || '',
@@ -274,10 +278,10 @@ const Work: React.FC = () => {
   };
 
   const uploadToStorage = async (file: File, folder: string) => {
-    if (!supabase) throw new Error('Client missing');
+    if (!supabase) throw new Error('Supabase client missing');
     const path = `${folder}/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, '_')}`;
     const { error } = await supabase.storage.from('videos').upload(path, file);
-    if (error) throw new Error(`STORAGE ERROR: ${error.message}`);
+    if (error) throw new Error(`STORAGE ERROR: ${error.message}. Is there a public bucket named 'videos'?`);
     const { data: { publicUrl } } = supabase.storage.from('videos').getPublicUrl(path);
     return publicUrl;
   };
@@ -294,21 +298,23 @@ const Work: React.FC = () => {
 
       const maxSort = projects.length > 0 ? Math.max(...projects.map(p => p.sortOrder || 0)) : 0;
 
-      const { error } = await supabase.from('projects').insert([{
+      const { data, error } = await supabase.from('projects').insert([{
         title: newProject.title,
         description: newProject.description,
         video_url: vUrl,
         thumb_url: tUrl,
         tags: newProject.tags.split(',').map(t => t.trim()).filter(Boolean),
         sort_order: maxSort + 1
-      }]);
+      }]).select();
 
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error("Insert succeeded but no data returned.");
+
       await fetchProjects();
       setIsAdding(false);
       setNewProject({ title: '', description: '', tags: '', videoFile: null, thumbFile: null, previewThumb: '' });
     } catch (err: any) {
-      setErrorMessage(`DATABASE ERROR: ${err.message}.`);
+      setErrorMessage(`ACTION FAILED: ${err.message}`);
     } finally {
       setIsUploading(false);
     }
@@ -342,7 +348,6 @@ const Work: React.FC = () => {
   return (
     <section id="work" className="py-24 px-6 bg-zinc-950">
       <div className="max-w-6xl mx-auto">
-        {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-8">
           <div>
             <div className="flex items-center gap-3 mb-4">
@@ -378,7 +383,29 @@ const Work: React.FC = () => {
           )}
         </div>
 
-        {/* Content Area */}
+        {errorMessage && isAdmin && (
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mb-12">
+            <div className="p-8 bg-red-500/5 border border-red-500/20 rounded-[2.5rem]">
+              <div className="flex items-start gap-4 text-red-400">
+                <AlertCircle size={24} className="shrink-0 mt-1" />
+                <div className="flex-1">
+                  <p className="font-bold text-lg">System Error</p>
+                  <p className="text-sm opacity-80 mt-1 mb-4">{errorMessage}</p>
+                  <div className="p-4 bg-black/40 rounded-xl border border-red-500/10">
+                    <p className="text-[10px] font-bold uppercase mb-2">Troubleshooting Steps:</p>
+                    <ul className="text-xs list-disc list-inside space-y-1 opacity-70">
+                      <li>Ensure a Public bucket named <strong>videos</strong> exists in Supabase Storage.</li>
+                      <li>Ensure the table <strong>projects</strong> has a <strong>sort_order</strong> column.</li>
+                      <li>Check your Database & Storage RLS Policies.</li>
+                    </ul>
+                  </div>
+                </div>
+                <button onClick={fetchProjects} className="p-3 bg-red-500/10 rounded-xl hover:bg-red-500/20 transition-colors"><RefreshCw size={18} /></button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
         {isLoading ? (
           <div className="py-20 flex flex-col items-center text-zinc-600">
             <Loader2 className="animate-spin mb-4" size={40} />
@@ -423,7 +450,7 @@ const Work: React.FC = () => {
 
         {/* MODALS */}
         <AnimatePresence>
-          {/* Admin Login Modal */}
+          {/* Admin Login Modal (The Requested Modern Change) */}
           {isLoginModalOpen && (
             <motion.div 
               initial={{ opacity: 0 }} 
@@ -461,7 +488,7 @@ const Work: React.FC = () => {
                 </div>
                 
                 <p className="text-zinc-500 text-sm mb-6 leading-relaxed">
-                  Please enter the secret passcode to unlock administrative features.
+                  Enter the secret passcode to unlock portfolio editing tools.
                 </p>
 
                 <form onSubmit={handleLoginSubmit} className="space-y-4">
@@ -472,7 +499,7 @@ const Work: React.FC = () => {
                     <input 
                       ref={loginInputRef}
                       type="password"
-                      placeholder="Enter Passcode..."
+                      placeholder="Passcode"
                       className={`w-full bg-zinc-950 border ${loginError ? 'border-red-500/50 focus:border-red-500' : 'border-zinc-800 focus:border-violet-500'} rounded-xl pl-12 pr-4 py-3.5 outline-none transition-all`}
                       value={enteredPass}
                       onChange={e => setEnteredPass(e.target.value)}
@@ -489,7 +516,7 @@ const Work: React.FC = () => {
                     type="submit"
                     className="w-full py-4 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-violet-600/20 active:scale-95"
                   >
-                    Verify & Unlock
+                    Authorize
                   </button>
                 </form>
               </motion.div>
@@ -526,8 +553,8 @@ const Work: React.FC = () => {
                     <input disabled={isUploading} placeholder="Tags (Commercial, AI, VFX)" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 outline-none" value={newProject.tags} onChange={e => setNewProject({...newProject, tags: e.target.value})} />
                   </div>
 
-                  <button type="submit" disabled={isUploading} className="w-full py-4 bg-violet-600 text-white font-bold rounded-xl hover:bg-violet-500 transition-all flex items-center justify-center gap-3">
-                    {isUploading ? <><Loader2 className="animate-spin" size={20} /> Saving...</> : <><CheckCircle2 size={20}/> Publish Project</>}
+                  <button type="submit" disabled={isUploading} className="w-full py-4 bg-violet-600 text-white font-bold rounded-xl hover:bg-violet-500 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed">
+                    {isUploading ? <><Loader2 className="animate-spin" size={20} /> Publishing...</> : <><CheckCircle2 size={20}/> Publish Project</>}
                   </button>
                 </form>
               </motion.div>
