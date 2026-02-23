@@ -8,6 +8,7 @@ export interface Project {
   videoUrl: string;
   thumbnail: string;
   tags: string[];
+  sortOrder?: number;
 }
 
 export interface Tool {
