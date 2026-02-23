@@ -20,6 +20,8 @@ import {
   LogOut, 
   ChevronLeft, 
   ChevronRight, 
+  ChevronUp,
+  ChevronDown,
   Lock, 
   KeyRound 
 } from 'lucide-react';
@@ -36,10 +38,12 @@ const ProjectCard: React.FC<{
   autoPlay?: boolean;
   onDelete: (id: string) => void; 
   isAdmin: boolean;
-  onMove: (direction: 'prev' | 'next') => void;
+  onMove: (direction: 'up' | 'down' | 'left' | 'right') => void;
   isFirst: boolean;
   isLast: boolean;
-}> = ({ project, autoPlay = false, onDelete, isAdmin, onMove, isFirst, isLast }) => {
+  canMoveUp: boolean;
+  canMoveDown: boolean;
+}> = ({ project, autoPlay = false, onDelete, isAdmin, onMove, isFirst, isLast, canMoveUp, canMoveDown }) => {
   const [isPlaying, setIsPlaying] = useState(autoPlay);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -82,26 +86,49 @@ const ProjectCard: React.FC<{
 
               {/* Admin Controls Overlay */}
               {isAdmin && (
-                <div className="absolute top-4 left-4 right-4 flex justify-between items-center z-20 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <div className="flex gap-1">
+                <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="grid grid-cols-3 gap-1 bg-black/60 backdrop-blur-md p-1.5 rounded-xl border border-white/10">
+                    <div />
                     <button 
-                      onClick={(e) => { e.stopPropagation(); onMove('prev'); }}
-                      disabled={isFirst}
-                      className={`p-2 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 transition-colors ${isFirst ? 'text-zinc-600 cursor-not-allowed' : 'text-white hover:text-amber-400'}`}
+                      onClick={(e) => { e.stopPropagation(); onMove('up'); }}
+                      disabled={!canMoveUp}
+                      className={`p-1.5 rounded-md transition-colors ${!canMoveUp ? 'text-zinc-600 cursor-not-allowed' : 'text-white hover:text-amber-400'}`}
+                      title="Move Up"
                     >
-                      <ChevronLeft size={16} />
+                      <ChevronUp size={14} />
+                    </button>
+                    <div />
+                    
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onMove('left'); }}
+                      disabled={isFirst}
+                      className={`p-1.5 rounded-md transition-colors ${isFirst ? 'text-zinc-600 cursor-not-allowed' : 'text-white hover:text-amber-400'}`}
+                      title="Move Left"
+                    >
+                      <ChevronLeft size={14} />
                     </button>
                     <button 
-                      onClick={(e) => { e.stopPropagation(); onMove('next'); }}
-                      disabled={isLast}
-                      className={`p-2 rounded-lg bg-black/60 backdrop-blur-md border border-white/10 transition-colors ${isLast ? 'text-zinc-600 cursor-not-allowed' : 'text-white hover:text-amber-400'}`}
+                      onClick={(e) => { e.stopPropagation(); onMove('down'); }}
+                      disabled={!canMoveDown}
+                      className={`p-1.5 rounded-md transition-colors ${!canMoveDown ? 'text-zinc-600 cursor-not-allowed' : 'text-white hover:text-amber-400'}`}
+                      title="Move Down"
                     >
-                      <ChevronRight size={16} />
+                      <ChevronDown size={14} />
+                    </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onMove('right'); }}
+                      disabled={isLast}
+                      className={`p-1.5 rounded-md transition-colors ${isLast ? 'text-zinc-600 cursor-not-allowed' : 'text-white hover:text-amber-400'}`}
+                      title="Move Right"
+                    >
+                      <ChevronRight size={14} />
                     </button>
                   </div>
+                  
                   <button 
                     onClick={(e) => { e.stopPropagation(); onDelete(project.id); }}
                     className="p-2 rounded-lg bg-red-500/20 backdrop-blur-md border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white transition-all"
+                    title="Delete Project"
                   >
                     <Trash2 size={16} />
                   </button>
@@ -261,9 +288,15 @@ const Work: React.FC = () => {
     }
   };
 
-  const moveProject = async (index: number, direction: 'prev' | 'next') => {
+  const moveProject = async (index: number, direction: 'up' | 'down' | 'left' | 'right') => {
     const newProjects = [...projects];
-    const targetIndex = direction === 'prev' ? index - 1 : index + 1;
+    let targetIndex = index;
+    
+    if (direction === 'left') targetIndex = index - 1;
+    else if (direction === 'right') targetIndex = index + 1;
+    else if (direction === 'up') targetIndex = index - 4;
+    else if (direction === 'down') targetIndex = index + 4;
+
     if (targetIndex < 0 || targetIndex >= newProjects.length) return;
     
     const temp = newProjects[index];
@@ -418,6 +451,8 @@ const Work: React.FC = () => {
                     onMove={(dir) => moveProject(index, dir)}
                     isFirst={index === 0}
                     isLast={index === projects.length - 1}
+                    canMoveUp={index >= 4}
+                    canMoveDown={index < projects.length - 4}
                   />
                 ))}
               </AnimatePresence>
