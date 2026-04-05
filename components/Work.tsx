@@ -68,7 +68,7 @@ const ProjectCard: React.FC<{
 }) => {
   const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isMuted, setIsMuted] = useState(isHero ? false : true);
+  const [isMuted, setIsMuted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const isCurrentlyActive = activeId === project.id;
@@ -280,6 +280,7 @@ const Work: React.FC = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [clickCount, setClickCount] = useState(0);
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(8);
   
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [enteredPass, setEnteredPass] = useState('');
@@ -475,7 +476,11 @@ const Work: React.FC = () => {
 
       // If we were changing hero, we should unset the previous hero
       if (isChangingHero && heroProject) {
-        await supabase.from('projects').update({ is_hero: false }).eq('id', heroProject.id);
+        // Ensure the old hero has a high sort order so it appears next to the new hero
+        await supabase.from('projects').update({ 
+          is_hero: false,
+          sort_order: maxSort 
+        }).eq('id', heroProject.id);
       }
 
       await fetchProjects();
@@ -568,37 +573,51 @@ const Work: React.FC = () => {
               <p className="text-xs font-bold tracking-widest uppercase">Fetching Projects...</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-              <AnimatePresence initial={false}>
-                {heroProject && (
-                  <ProjectCard 
-                    key={heroProject.id} 
-                    project={heroProject} 
-                    autoPlay={true}
-                    isAdmin={isAdmin} 
-                    isHero={true}
-                    onChangeHero={() => { setIsChangingHero(true); setIsAdding(true); }}
-                    activeId={activeVideoId}
-                    onPlay={(id) => setActiveVideoId(id)}
-                  />
-                )}
-                {projects.map((project, index) => (
-                  <ProjectCard 
-                    key={project.id} 
-                    project={project} 
-                    autoPlay={false}
-                    onDelete={deleteProject} 
-                    isAdmin={isAdmin} 
-                    onMove={(dir) => moveProject(index, dir)}
-                    isFirst={index === 0}
-                    isLast={index === projects.length - 1}
-                    canMoveUp={index >= 4}
-                    canMoveDown={index < projects.length - 4}
-                    activeId={activeVideoId}
-                    onPlay={(id) => setActiveVideoId(id)}
-                  />
-                ))}
-              </AnimatePresence>
+            <div className="space-y-12">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+                <AnimatePresence initial={false}>
+                  {heroProject && (
+                    <ProjectCard 
+                      key={heroProject.id} 
+                      project={heroProject} 
+                      autoPlay={true}
+                      isAdmin={isAdmin} 
+                      isHero={true}
+                      onChangeHero={() => { setIsChangingHero(true); setIsAdding(true); }}
+                      activeId={activeVideoId}
+                      onPlay={(id) => setActiveVideoId(id)}
+                    />
+                  )}
+                  {projects.slice(0, visibleCount - (heroProject ? 1 : 0)).map((project, index) => (
+                    <ProjectCard 
+                      key={project.id} 
+                      project={project} 
+                      autoPlay={false}
+                      onDelete={deleteProject} 
+                      isAdmin={isAdmin} 
+                      onMove={(dir) => moveProject(index, dir)}
+                      isFirst={index === 0}
+                      isLast={index === projects.length - 1}
+                      canMoveUp={index >= 4}
+                      canMoveDown={index < projects.length - 4}
+                      activeId={activeVideoId}
+                      onPlay={(id) => setActiveVideoId(id)}
+                    />
+                  ))}
+                </AnimatePresence>
+              </div>
+
+              {projects.length + (heroProject ? 1 : 0) > visibleCount && (
+                <div className="flex justify-center pt-8">
+                  <button
+                    onClick={() => setVisibleCount(prev => prev + 8)}
+                    className="group flex items-center gap-3 px-10 py-5 bg-zinc-900/50 hover:bg-amber-500 text-zinc-400 hover:text-black font-bold rounded-2xl border border-zinc-800 hover:border-amber-400 transition-all duration-500 shadow-xl"
+                  >
+                    <RefreshCw className="group-hover:rotate-180 transition-transform duration-700" size={20} />
+                    Load More Projects
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
