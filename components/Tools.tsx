@@ -13,31 +13,28 @@ const Tools: React.FC = () => {
           viewport={{ once: true }}
           className="text-center mb-16"
         >
-          <h2 className="text-zinc-500 text-[10px] font-bold uppercase tracking-[0.3em] mb-4">High-Performance Workflow</h2>
-          <p className="text-3xl font-medium tracking-tight">Equipped with the best industry tools</p>
+          <h2 className="text-zinc-500 text-xs font-bold uppercase tracking-[0.2em] mb-4">Post-Production Stack</h2>
+          <p className="text-3xl font-medium">Industry-standard software I master</p>
         </motion.div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
           {TOOLS.map((tool, index) => (
             <motion.div
               key={tool.id}
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
+              initial={{ opacity: 0, y: 10 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: index * 0.05, duration: 0.3 }}
+              transition={{ delay: index * 0.05, duration: 0.4 }}
               whileHover={{ 
-                y: -8,
-                backgroundColor: 'rgba(39, 39, 42, 0.8)',
-                borderColor: 'rgba(139, 92, 246, 0.3)'
+                y: -5,
+                backgroundColor: 'rgba(39, 39, 42, 0.6)' 
               }}
-              className="group flex flex-col items-center justify-center p-8 bg-zinc-900/40 rounded-3xl border border-zinc-800/50 cursor-default transition-all duration-300"
+              className="flex flex-col items-center justify-center p-6 bg-zinc-900/40 rounded-3xl border border-zinc-800/50 cursor-default transition-all duration-300"
             >
-              <div className="text-violet-400 mb-4 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6">
+              <div className="text-violet-400 mb-3 transition-transform duration-300 group-hover:scale-110">
                 {tool.icon}
               </div>
-              <span className="text-sm font-bold text-zinc-200 tracking-wide uppercase group-hover:text-white transition-colors">
-                {tool.name}
-              </span>
+              <span className="text-sm font-medium text-zinc-300 tracking-wide">{tool.name}</span>
             </motion.div>
           ))}
         </div>
