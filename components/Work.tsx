@@ -74,7 +74,19 @@ const ProjectCard: React.FC<{
   const isCurrentlyActive = activeId === project.id;
 
   useEffect(() => {
-    if (!isCurrentlyActive && videoRef.current) {
+    if (isCurrentlyActive && videoRef.current) {
+      const playPromise = videoRef.current.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // If unmuted autoplay is blocked, mute and try again to ensure it's "always running"
+          if (videoRef.current) {
+            videoRef.current.muted = true;
+            setIsMuted(true);
+            videoRef.current.play().catch(e => console.error("Autoplay failed even when muted:", e));
+          }
+        });
+      }
+    } else if (!isCurrentlyActive && videoRef.current) {
       videoRef.current.pause();
     }
   }, [isCurrentlyActive]);
