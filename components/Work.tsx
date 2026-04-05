@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { createClient } from '@supabase/supabase-js';
 import { Project } from '../types';
 import { 
@@ -206,7 +206,7 @@ const Work: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => setClickCount(0), 3000);
+    const timer = setTimeout(() => setClickCount(0), 5000);
     return () => clearTimeout(timer);
   }, [clickCount]);
 
@@ -218,8 +218,10 @@ const Work: React.FC = () => {
 
   const handleTitleClick = () => {
     const newCount = clickCount + 1;
+    console.log(`Vault Click: ${newCount}/5`);
     setClickCount(newCount);
     if (newCount >= 5) {
+      console.log('Vault Triggered!');
       setClickCount(0);
       if (isAdmin) {
         if (confirm('Log out of Admin mode?')) {
@@ -378,7 +380,7 @@ const Work: React.FC = () => {
             Atif Mustafa
           </h2>
           <p 
-            className="text-4xl md:text-6xl text-amber-500 font-normal absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-[-10%] md:-translate-y-[-20%] z-10"
+            className="text-4xl md:text-6xl text-amber-500 font-normal absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-[-10%] md:-translate-y-[-20%] z-10 pointer-events-none"
             style={{ fontFamily: "'Yellowtail', cursive" }}
           >
             Stop Scroll Ads
