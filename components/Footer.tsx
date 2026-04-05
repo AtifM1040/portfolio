@@ -25,7 +25,7 @@ const Footer: React.FC = () => {
                 <div className="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center">
                   <Mail size={18} className="text-violet-400" />
                 </div>
-                <a href="mailto:atiff.services@gmail.com" className="hover:text-white transition-colors">contact@atifmustafa.com</a>
+                <a href="mailto:atiff.services@gmail.com" className="hover:text-white transition-colors">atiff.services@gmail.com</a>
               </div>
               <div className="flex items-center gap-4 text-zinc-300">
                 <div className="w-10 h-10 rounded-full bg-zinc-900 flex items-center justify-center">
