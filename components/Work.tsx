@@ -4,6 +4,10 @@ import { motion, AnimatePresence } from 'motion/react';
 import { createClient } from '@supabase/supabase-js';
 import { Project } from '../types';
 import { 
+  Pause,
+  Volume2,
+  VolumeX,
+  Settings2,
   Play, 
   X, 
   Upload, 
@@ -36,16 +40,60 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const ProjectCard: React.FC<{ 
   project: Project; 
   autoPlay?: boolean;
-  onDelete: (id: string) => void; 
+  onDelete?: (id: string) => void; 
   isAdmin: boolean;
-  onMove: (direction: 'up' | 'down' | 'left' | 'right') => void;
-  isFirst: boolean;
-  isLast: boolean;
-  canMoveUp: boolean;
-  canMoveDown: boolean;
-}> = ({ project, autoPlay = false, onDelete, isAdmin, onMove, isFirst, isLast, canMoveUp, canMoveDown }) => {
-  const [isPlaying, setIsPlaying] = useState(autoPlay);
+  onMove?: (direction: 'up' | 'down' | 'left' | 'right') => void;
+  isFirst?: boolean;
+  isLast?: boolean;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
+  isHero?: boolean;
+  onChangeHero?: () => void;
+  activeId: string | null;
+  onPlay: (id: string) => void;
+}> = ({ 
+  project, 
+  autoPlay = false, 
+  onDelete, 
+  isAdmin, 
+  onMove, 
+  isFirst = false, 
+  isLast = false, 
+  canMoveUp = false, 
+  canMoveDown = false,
+  isHero = false,
+  onChangeHero,
+  activeId,
+  onPlay
+}) => {
+  const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMuted, setIsMuted] = useState(isHero ? false : true);
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const isCurrentlyActive = activeId === project.id;
+
+  useEffect(() => {
+    if (!isCurrentlyActive && videoRef.current) {
+      videoRef.current.pause();
+    }
+  }, [isCurrentlyActive]);
+
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isCurrentlyActive) {
+      onPlay(project.id);
+      setIsPaused(false);
+    } else {
+      if (videoRef.current?.paused) {
+        videoRef.current.play();
+        setIsPaused(false);
+      } else {
+        videoRef.current?.pause();
+        setIsPaused(true);
+      }
+    }
+  };
 
   return (
     <motion.div
@@ -53,11 +101,11 @@ const ProjectCard: React.FC<{
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
-      className="group relative bg-zinc-900/40 rounded-3xl border border-zinc-800/50 overflow-hidden backdrop-blur-sm hover:border-amber-500/50 transition-all duration-500 shadow-2xl"
+      className={`group relative bg-zinc-900/40 rounded-3xl border ${isHero ? 'border-amber-500/30' : 'border-zinc-800/50'} overflow-hidden backdrop-blur-sm hover:border-amber-500/50 transition-all duration-500 shadow-2xl`}
     >
       <div className="relative aspect-[9/16] w-full overflow-hidden bg-zinc-950">
         <AnimatePresence mode="wait">
-          {!isPlaying ? (
+          {!isCurrentlyActive ? (
             <motion.div 
               key="thumbnail"
               initial={{ opacity: 0 }}
@@ -65,7 +113,10 @@ const ProjectCard: React.FC<{
               exit={{ opacity: 0, scale: 1.1 }}
               transition={{ duration: 0.6 }}
               className="relative h-full w-full cursor-pointer"
-              onClick={() => setIsPlaying(true)}
+              onClick={() => {
+                onPlay(project.id);
+                setIsPaused(false);
+              }}
             >
               <img 
                 src={project.thumbnail} 
@@ -85,7 +136,7 @@ const ProjectCard: React.FC<{
               </div>
 
               {/* Admin Controls Overlay */}
-              {isAdmin && (
+              {isAdmin && !isHero && onDelete && onMove && (
                 <div className="absolute top-4 left-4 right-4 flex justify-between items-start z-20 opacity-0 group-hover:opacity-100 transition-opacity">
                   <div className="grid grid-cols-3 gap-1 bg-black/60 backdrop-blur-md p-1.5 rounded-xl border border-white/10">
                     <div />
@@ -134,13 +185,25 @@ const ProjectCard: React.FC<{
                   </button>
                 </div>
               )}
+
+              {isAdmin && isHero && onChangeHero && (
+                <div className="absolute top-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onChangeHero(); }}
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-bold rounded-xl hover:bg-amber-400 transition-all shadow-lg"
+                  >
+                    <Settings2 size={16} /> Change Hero
+                  </button>
+                </div>
+              )}
             </motion.div>
           ) : (
             <motion.div 
               key="video"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="absolute inset-0 z-10 bg-black"
+              className="absolute inset-0 z-10 bg-black cursor-pointer"
+              onClick={togglePlay}
             >
               {isLoading && (
                 <div className="absolute inset-0 flex items-center justify-center z-20">
@@ -148,23 +211,56 @@ const ProjectCard: React.FC<{
                 </div>
               )}
               <video 
+                ref={videoRef}
                 src={project.videoUrl} 
                 className="w-full h-full object-cover"
                 autoPlay 
-                muted={autoPlay}
+                muted={isMuted}
                 loop
                 playsInline
                 onCanPlay={() => setIsLoading(false)}
               />
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsPlaying(false);
-                }}
-                className="absolute top-4 right-4 z-30 w-10 h-10 rounded-full bg-zinc-950/80 text-white flex items-center justify-center hover:bg-white hover:text-black transition-all duration-300 shadow-xl border border-white/10"
-              >
-                <X size={18} />
-              </button>
+
+              {/* Pause Overlay */}
+              {isPaused && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-20">
+                  <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-xl border border-white/30 flex items-center justify-center">
+                    <Play fill="white" size={32} className="ml-1" />
+                  </div>
+                </div>
+              )}
+
+              <div className="absolute top-4 right-4 z-30 flex gap-2">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsMuted(!isMuted);
+                  }}
+                  className="w-10 h-10 rounded-full bg-zinc-950/80 text-white flex items-center justify-center hover:bg-white hover:text-black transition-all duration-300 shadow-xl border border-white/10"
+                >
+                  {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+                </button>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPlay(''); // Stop this video
+                  }}
+                  className="w-10 h-10 rounded-full bg-zinc-950/80 text-white flex items-center justify-center hover:bg-white hover:text-black transition-all duration-300 shadow-xl border border-white/10"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {isAdmin && isHero && onChangeHero && (
+                <div className="absolute top-4 left-4 z-30">
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onChangeHero(); }}
+                    className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-bold rounded-xl hover:bg-amber-400 transition-all shadow-lg"
+                  >
+                    <Settings2 size={16} /> Change Hero
+                  </button>
+                </div>
+              )}
             </motion.div>
           )}
         </AnimatePresence>
@@ -175,12 +271,15 @@ const ProjectCard: React.FC<{
 
 const Work: React.FC = () => {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [heroProject, setHeroProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
+  const [isChangingHero, setIsChangingHero] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [clickCount, setClickCount] = useState(0);
+  const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
   
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [enteredPass, setEnteredPass] = useState('');
@@ -191,7 +290,7 @@ const Work: React.FC = () => {
     description: '',
     tags: '',
     videoFile: null as File | null,
-    thumbFile: null as File | null,
+    thumbFile: null as (File | Blob | null),
     previewThumb: ''
   });
 
@@ -259,15 +358,23 @@ const Work: React.FC = () => {
       
       if (error) throw error;
       
-      setProjects((data || []).map(p => ({
+      const allProjects = (data || []).map(p => ({
         id: String(p.id),
         title: p.title || '',
         description: p.description || '',
         videoUrl: p.video_url || '',
         thumbnail: p.thumb_url || '',
         tags: Array.isArray(p.tags) ? p.tags : [],
-        sortOrder: p.sort_order ?? 0
-      })));
+        sortOrder: p.sort_order ?? 0,
+        isHero: p.is_hero || false
+      }));
+
+      const hero = allProjects.find(p => p.isHero) || allProjects[0];
+      const others = allProjects.filter(p => p.id !== hero?.id);
+
+      setHeroProject(hero || null);
+      setProjects(others);
+      if (hero) setActiveVideoId(hero.id);
     } catch (err: any) {
       setErrorMessage(err.message || 'Connection failed.');
     } finally {
@@ -309,8 +416,33 @@ const Work: React.FC = () => {
     await saveOrderToDb(newProjects);
   };
 
-  const uploadToStorage = async (file: File, folder: string) => {
-    const path = `${folder}/${Date.now()}-${file.name.replace(/[^a-z0-9.]/gi, '_')}`;
+  const generateVideoThumbnail = (file: File): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = () => {
+        video.currentTime = 1; // Capture at 1 second
+      };
+      video.onseeked = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx?.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => {
+          if (blob) resolve(blob);
+          else reject(new Error('Failed to generate thumbnail'));
+        }, 'image/jpeg', 0.8);
+        URL.revokeObjectURL(video.src);
+      };
+      video.onerror = reject;
+      video.src = URL.createObjectURL(file);
+    });
+  };
+
+  const uploadToStorage = async (file: File | Blob, folder: string, originalName?: string) => {
+    const fileName = originalName || (file instanceof File ? file.name : 'thumbnail.jpg');
+    const path = `${folder}/${Date.now()}-${fileName.replace(/[^a-z0-9.]/gi, '_')}`;
     const { error } = await supabase.storage.from('videos').upload(path, file);
     if (error) throw new Error(`STORAGE ERROR: ${error.message}`);
     const { data: { publicUrl } } = supabase.storage.from('videos').getPublicUrl(path);
@@ -325,7 +457,7 @@ const Work: React.FC = () => {
     setErrorMessage(null);
     try {
       const vUrl = await uploadToStorage(newProject.videoFile, 'raw');
-      const tUrl = await uploadToStorage(newProject.thumbFile, 'thumbs');
+      const tUrl = await uploadToStorage(newProject.thumbFile, 'thumbs', 'thumb.jpg');
 
       const maxSort = projects.length > 0 ? Math.max(...projects.map(p => p.sortOrder || 0)) : 0;
 
@@ -335,13 +467,20 @@ const Work: React.FC = () => {
         video_url: vUrl,
         thumb_url: tUrl,
         tags: newProject.tags.split(',').map(t => t.trim()).filter(Boolean),
-        sort_order: maxSort + 1
+        sort_order: maxSort + 1,
+        is_hero: isChangingHero
       }]);
 
       if (error) throw error;
 
+      // If we were changing hero, we should unset the previous hero
+      if (isChangingHero && heroProject) {
+        await supabase.from('projects').update({ is_hero: false }).eq('id', heroProject.id);
+      }
+
       await fetchProjects();
       setIsAdding(false);
+      setIsChangingHero(false);
       setNewProject({ title: '', description: '', tags: '', videoFile: null, thumbFile: null, previewThumb: '' });
     } catch (err: any) {
       setErrorMessage(`ACTION FAILED: ${err.message}`);
@@ -356,6 +495,7 @@ const Work: React.FC = () => {
       const { error } = await supabase.from('projects').delete().eq('id', id);
       if (error) throw error;
       setProjects(prev => prev.filter(p => p.id !== id));
+      if (heroProject?.id === id) setHeroProject(null);
     } catch (err: any) {
       alert(`Delete failed: ${err.message}`);
     }
@@ -393,7 +533,7 @@ const Work: React.FC = () => {
               className="mt-12 flex justify-center gap-4"
             >
               <button 
-                onClick={() => setIsAdding(true)} 
+                onClick={() => { setIsChangingHero(false); setIsAdding(true); }} 
                 className="flex items-center gap-2 px-8 py-4 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-2xl transition-all shadow-lg shadow-amber-500/20"
               >
                 <Plus size={20} /> Add Project
@@ -427,27 +567,26 @@ const Work: React.FC = () => {
               <Loader2 className="animate-spin mb-4" size={40} />
               <p className="text-xs font-bold tracking-widest uppercase">Fetching Projects...</p>
             </div>
-          ) : projects.length === 0 ? (
-            <div className="py-32 text-center">
-              <CloudIcon className="text-zinc-800 mx-auto mb-6" size={64} />
-              <p className="text-zinc-500 text-xl font-light">Your portfolio is empty.</p>
-              {isAdmin && (
-                <button 
-                  onClick={() => setIsAdding(true)} 
-                  className="mt-6 px-8 py-3 bg-zinc-900 border border-zinc-800 text-white rounded-full hover:bg-zinc-800 transition-colors"
-                >
-                  Create First Project
-                </button>
-              )}
-            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
               <AnimatePresence initial={false}>
+                {heroProject && (
+                  <ProjectCard 
+                    key={heroProject.id} 
+                    project={heroProject} 
+                    autoPlay={true}
+                    isAdmin={isAdmin} 
+                    isHero={true}
+                    onChangeHero={() => { setIsChangingHero(true); setIsAdding(true); }}
+                    activeId={activeVideoId}
+                    onPlay={(id) => setActiveVideoId(id)}
+                  />
+                )}
                 {projects.map((project, index) => (
                   <ProjectCard 
                     key={project.id} 
                     project={project} 
-                    autoPlay={index === 0}
+                    autoPlay={false}
                     onDelete={deleteProject} 
                     isAdmin={isAdmin} 
                     onMove={(dir) => moveProject(index, dir)}
@@ -455,6 +594,8 @@ const Work: React.FC = () => {
                     isLast={index === projects.length - 1}
                     canMoveUp={index >= 4}
                     canMoveDown={index < projects.length - 4}
+                    activeId={activeVideoId}
+                    onPlay={(id) => setActiveVideoId(id)}
                   />
                 ))}
               </AnimatePresence>
@@ -548,7 +689,22 @@ const Work: React.FC = () => {
               <form onSubmit={handleAddProject} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div onClick={() => !isUploading && videoInputRef.current?.click()} className="h-40 border-2 border-dashed border-zinc-800 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-amber-500 transition-colors bg-zinc-950">
-                    <input type="file" ref={videoInputRef} className="hidden" accept="video/*" onChange={e => setNewProject({...newProject, videoFile: e.target.files?.[0] || null})} />
+                    <input type="file" ref={videoInputRef} className="hidden" accept="video/*" onChange={async (e) => {
+                      const f = e.target.files?.[0];
+                      if (f) {
+                        setNewProject(prev => ({...prev, videoFile: f}));
+                        try {
+                          const thumbBlob = await generateVideoThumbnail(f);
+                          setNewProject(prev => ({
+                            ...prev, 
+                            thumbFile: thumbBlob, 
+                            previewThumb: URL.createObjectURL(thumbBlob)
+                          }));
+                        } catch (err) {
+                          console.error("Auto-thumb failed:", err);
+                        }
+                      }
+                    }} />
                     {newProject.videoFile ? <div className="text-center p-2"><FileVideo className="mx-auto mb-2 text-amber-400"/><span className="text-[10px] block truncate px-2">{newProject.videoFile.name}</span></div> : <Upload className="text-zinc-700"/>}
                   </div>
                   <div onClick={() => !isUploading && thumbInputRef.current?.click()} className="h-40 border-2 border-dashed border-zinc-800 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-amber-500 transition-colors bg-zinc-950 overflow-hidden">
