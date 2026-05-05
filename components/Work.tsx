@@ -33,9 +33,11 @@ import {
 // --- SUPABASE CONFIGURATION ---
 const SUPABASE_URL = 'https://euznogckxiczgwkjxyuk.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV1em5vZ2NreGljemd3a2p4eXVrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjgxMzE3OTUsImV4cCI6MjA4MzcwNzc5NX0.BQP4qSG8-yzV4tHIBftxbreIEG2bQdbBY_qyFP5TdG0';
-const ADMIN_PASSCODE = "atif2024";
+const ADMIN_PASSCODE = "ATIF2000";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const categories = ["Stop Scroll Ads", "Beauty Product Ads", "UGC / VSL"];
 
 const ProjectCard: React.FC<{ 
   project: Project; 
@@ -48,7 +50,7 @@ const ProjectCard: React.FC<{
   canMoveUp?: boolean;
   canMoveDown?: boolean;
   isHero?: boolean;
-  onChangeHero?: () => void;
+  onChangeHero?: (categoryId: string) => void;
   activeId: string | null;
   onPlay: (id: string) => void;
 }> = ({ 
@@ -201,7 +203,7 @@ const ProjectCard: React.FC<{
               {isAdmin && isHero && onChangeHero && (
                 <div className="absolute top-4 right-4 z-20 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button 
-                    onClick={(e) => { e.stopPropagation(); onChangeHero(); }}
+                    onClick={(e) => { e.stopPropagation(); onChangeHero(project.category || categories[0]); }}
                     className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-bold rounded-xl hover:bg-amber-400 transition-all shadow-lg"
                   >
                     <Settings2 size={16} /> Change Hero
@@ -266,7 +268,7 @@ const ProjectCard: React.FC<{
               {isAdmin && isHero && onChangeHero && (
                 <div className="absolute top-4 left-4 z-30">
                   <button 
-                    onClick={(e) => { e.stopPropagation(); onChangeHero(); }}
+                    onClick={(e) => { e.stopPropagation(); onChangeHero(project.category || categories[0]); }}
                     className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-black font-bold rounded-xl hover:bg-amber-400 transition-all shadow-lg"
                   >
                     <Settings2 size={16} /> Change Hero
@@ -286,14 +288,13 @@ const Work: React.FC = () => {
   const [heroProject, setHeroProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
+  const [activeCategory, setActiveCategory] = useState(categories[0]);
   const [isChangingHero, setIsChangingHero] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [clickCount, setClickCount] = useState(0);
   const [activeVideoId, setActiveVideoId] = useState<string | null>(null);
-  const [visibleCount, setVisibleCount] = useState(8);
-  
+
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [enteredPass, setEnteredPass] = useState('');
   const [loginError, setLoginError] = useState(false);
@@ -302,6 +303,7 @@ const Work: React.FC = () => {
     title: '',
     description: '',
     tags: '',
+    category: categories[0],
     videoFile: null as File | null,
     thumbFile: null as (File | Blob | null),
     previewThumb: ''
@@ -312,15 +314,21 @@ const Work: React.FC = () => {
   const loginInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const savedAdmin = localStorage.getItem('portfolio_admin_v1');
-    if (savedAdmin === 'true') setIsAdmin(true);
     fetchProjects();
-  }, []);
 
-  useEffect(() => {
-    const timer = setTimeout(() => setClickCount(0), 5000);
-    return () => clearTimeout(timer);
-  }, [clickCount]);
+    const handleLoginTrigger = () => {
+      if (isAdmin) {
+        if (confirm('Log out of Admin mode?')) {
+          setIsAdmin(false);
+        }
+      } else {
+        setIsLoginModalOpen(true);
+      }
+    };
+
+    window.addEventListener('trigger-admin-login', handleLoginTrigger);
+    return () => window.removeEventListener('trigger-admin-login', handleLoginTrigger);
+  }, [isAdmin]);
 
   useEffect(() => {
     if (isLoginModalOpen) {
@@ -328,29 +336,10 @@ const Work: React.FC = () => {
     }
   }, [isLoginModalOpen]);
 
-  const handleTitleClick = () => {
-    const newCount = clickCount + 1;
-    console.log(`Vault Click: ${newCount}/5`);
-    setClickCount(newCount);
-    if (newCount >= 5) {
-      console.log('Vault Triggered!');
-      setClickCount(0);
-      if (isAdmin) {
-        if (confirm('Log out of Admin mode?')) {
-          setIsAdmin(false);
-          localStorage.removeItem('portfolio_admin_v1');
-        }
-      } else {
-        setIsLoginModalOpen(true);
-      }
-    }
-  };
-
   const handleLoginSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (enteredPass === ADMIN_PASSCODE) {
       setIsAdmin(true);
-      localStorage.setItem('portfolio_admin_v1', 'true');
       setIsLoginModalOpen(false);
       setEnteredPass('');
       setLoginError(false);
@@ -379,15 +368,14 @@ const Work: React.FC = () => {
         thumbnail: p.thumb_url || '',
         tags: Array.isArray(p.tags) ? p.tags : [],
         sortOrder: p.sort_order ?? 0,
-        isHero: p.is_hero || false
+        isHero: p.is_hero || false,
+        category: p.category || categories[0]
       }));
 
-      const hero = allProjects.find(p => p.isHero) || allProjects[0];
-      const others = allProjects.filter(p => p.id !== hero?.id);
-
-      setHeroProject(hero || null);
-      setProjects(others);
-      if (hero) setActiveVideoId(hero.id);
+      setProjects(allProjects);
+      
+      const firstHero = allProjects.find(p => p.isHero);
+      if (firstHero) setActiveVideoId(firstHero.id);
     } catch (err: any) {
       setErrorMessage(err.message || 'Connection failed.');
     } finally {
@@ -481,24 +469,27 @@ const Work: React.FC = () => {
         thumb_url: tUrl,
         tags: newProject.tags.split(',').map(t => t.trim()).filter(Boolean),
         sort_order: maxSort + 1,
-        is_hero: isChangingHero
+        is_hero: isChangingHero,
+        category: isChangingHero ? activeCategory : newProject.category
       }]);
 
       if (error) throw error;
 
-      // If we were changing hero, we should unset the previous hero
-      if (isChangingHero && heroProject) {
-        // Ensure the old hero has a high sort order so it appears next to the new hero
-        await supabase.from('projects').update({ 
-          is_hero: false,
-          sort_order: maxSort 
-        }).eq('id', heroProject.id);
+      // If we were changing hero, we should unset the previous hero for THIS category
+      if (isChangingHero && projects.length > 0) {
+        const oldHero = projects.find(p => p.isHero && p.category === activeCategory);
+        if (oldHero) {
+          await supabase.from('projects').update({ 
+            is_hero: false,
+            sort_order: maxSort 
+          }).eq('id', oldHero.id);
+        }
       }
 
       await fetchProjects();
       setIsAdding(false);
       setIsChangingHero(false);
-      setNewProject({ title: '', description: '', tags: '', videoFile: null, thumbFile: null, previewThumb: '' });
+      setNewProject({ title: '', description: '', tags: '', category: categories[0], videoFile: null, thumbFile: null, previewThumb: '' });
     } catch (err: any) {
       setErrorMessage(`ACTION FAILED: ${err.message}`);
     } finally {
@@ -512,10 +503,87 @@ const Work: React.FC = () => {
       const { error } = await supabase.from('projects').delete().eq('id', id);
       if (error) throw error;
       setProjects(prev => prev.filter(p => p.id !== id));
-      if (heroProject?.id === id) setHeroProject(null);
     } catch (err: any) {
       alert(`Delete failed: ${err.message}`);
     }
+  };
+
+  const renderShowcase = (category: string) => {
+    const categoryProjects = projects.filter(p => p.category === category);
+    // Sort category projects by sortOrder ascending to find the oldest/default fallback
+    const sortedForFallback = [...categoryProjects].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    const hero = categoryProjects.find(p => p.isHero) || sortedForFallback[0];
+    const others = categoryProjects.filter(p => p.id !== hero?.id);
+
+    return (
+      <div key={category} className="mb-24 last:mb-0">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mb-12 text-center relative"
+        >
+          <h2 className="text-6xl md:text-8xl font-black tracking-tighter text-white uppercase leading-none select-none">
+            Project Showcase
+          </h2>
+          <p 
+            className="text-4xl md:text-6xl text-amber-500 font-normal absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-[-10%] md:-translate-y-[-20%] z-10 pointer-events-none whitespace-nowrap"
+            style={{ fontFamily: "'Yellowtail', cursive" }}
+          >
+            {category}
+          </p>
+        </motion.div>
+
+        <div className="p-4 md:p-8 rounded-[3rem] border border-white/10 bg-zinc-900/20 backdrop-blur-sm">
+          {categoryProjects.length === 0 ? (
+            <div className="py-20 text-center">
+              <p className="text-zinc-500 text-lg">No projects in this category yet.</p>
+              {isAdmin && (
+                <button 
+                  onClick={() => { setActiveCategory(category); setIsChangingHero(false); setIsAdding(true); }} 
+                  className="mt-4 px-6 py-2 bg-zinc-800 text-white rounded-xl hover:bg-zinc-700 transition"
+                >
+                  Add Your First Project
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
+              <AnimatePresence initial={false}>
+                {hero && (
+                  <ProjectCard 
+                    key={hero.id} 
+                    project={hero} 
+                    autoPlay={true}
+                    isAdmin={isAdmin} 
+                    isHero={true}
+                    onChangeHero={(cat) => { setActiveCategory(cat); setIsChangingHero(true); setIsAdding(true); }}
+                    activeId={activeVideoId}
+                    onPlay={(id) => setActiveVideoId(id)}
+                  />
+                )}
+                {others.map((project, index) => (
+                  <ProjectCard 
+                    key={project.id} 
+                    project={project} 
+                    autoPlay={false}
+                    onDelete={deleteProject} 
+                    isAdmin={isAdmin} 
+                    onMove={(dir) => moveProject(projects.indexOf(project), dir)}
+                    isFirst={index === 0}
+                    isLast={index === others.length - 1}
+                    canMoveUp={index >= 4}
+                    canMoveDown={index < others.length - 4}
+                    activeId={activeVideoId}
+                    onPlay={(id) => setActiveVideoId(id)}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -524,47 +592,16 @@ const Work: React.FC = () => {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.08)_0%,transparent_70%)] pointer-events-none" />
       
       <div className="max-w-[1600px] mx-auto relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mb-20 text-center relative"
-        >
-          <h2 
-            onClick={handleTitleClick}
-            className="text-6xl md:text-8xl font-black tracking-tighter text-white uppercase leading-none cursor-pointer select-none active:opacity-80 transition-opacity"
-          >
-            Atif Mustafa
-          </h2>
-          <p 
-            className="text-4xl md:text-6xl text-amber-500 font-normal absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-[-10%] md:-translate-y-[-20%] z-10 pointer-events-none"
-            style={{ fontFamily: "'Yellowtail', cursive" }}
-          >
-            Stop Scroll Ads
-          </p>
-          
-          {isAdmin && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }} 
-              animate={{ opacity: 1, scale: 1 }} 
-              className="mt-12 flex justify-center gap-4"
+        {isAdmin && (
+          <div className="mb-12 flex justify-center">
+            <button 
+              onClick={() => { setIsChangingHero(false); setIsAdding(true); }} 
+              className="flex items-center gap-2 px-8 py-4 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-2xl transition-all shadow-lg shadow-amber-500/20"
             >
-              <button 
-                onClick={() => { setIsChangingHero(false); setIsAdding(true); }} 
-                className="flex items-center gap-2 px-8 py-4 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-2xl transition-all shadow-lg shadow-amber-500/20"
-              >
-                <Plus size={20} /> Add Project
-              </button>
-              <button 
-                onClick={() => { setIsAdmin(false); localStorage.removeItem('portfolio_admin_v1'); }} 
-                className="p-4 bg-zinc-900 text-zinc-400 hover:text-white rounded-2xl border border-zinc-800 transition-colors" 
-                title="Logout"
-              >
-                <LogOut size={20} />
-              </button>
-            </motion.div>
-          )}
-        </motion.div>
+              <Plus size={20} /> Add Project
+            </button>
+          </div>
+        )}
 
         {errorMessage && isAdmin && (
           <div className="mb-12 p-6 bg-red-500/10 border border-red-500/20 rounded-2xl text-red-400 flex items-center justify-between">
@@ -578,61 +615,14 @@ const Work: React.FC = () => {
           </div>
         )}
 
-        <div className="p-4 md:p-8 rounded-[3rem] border border-white/10 bg-zinc-900/20 backdrop-blur-sm">
-          {isLoading ? (
-            <div className="py-32 flex flex-col items-center text-zinc-600">
-              <Loader2 className="animate-spin mb-4" size={40} />
-              <p className="text-xs font-bold tracking-widest uppercase">Fetching Projects...</p>
-            </div>
-          ) : (
-            <div className="space-y-12">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-8">
-                <AnimatePresence initial={false}>
-                  {heroProject && (
-                    <ProjectCard 
-                      key={heroProject.id} 
-                      project={heroProject} 
-                      autoPlay={true}
-                      isAdmin={isAdmin} 
-                      isHero={true}
-                      onChangeHero={() => { setIsChangingHero(true); setIsAdding(true); }}
-                      activeId={activeVideoId}
-                      onPlay={(id) => setActiveVideoId(id)}
-                    />
-                  )}
-                  {projects.slice(0, visibleCount - (heroProject ? 1 : 0)).map((project, index) => (
-                    <ProjectCard 
-                      key={project.id} 
-                      project={project} 
-                      autoPlay={false}
-                      onDelete={deleteProject} 
-                      isAdmin={isAdmin} 
-                      onMove={(dir) => moveProject(index, dir)}
-                      isFirst={index === 0}
-                      isLast={index === projects.length - 1}
-                      canMoveUp={index >= 4}
-                      canMoveDown={index < projects.length - 4}
-                      activeId={activeVideoId}
-                      onPlay={(id) => setActiveVideoId(id)}
-                    />
-                  ))}
-                </AnimatePresence>
-              </div>
-
-              {projects.length + (heroProject ? 1 : 0) > visibleCount && (
-                <div className="flex justify-center pt-8">
-                  <button
-                    onClick={() => setVisibleCount(prev => prev + 8)}
-                    className="group flex items-center gap-3 px-10 py-5 bg-zinc-900/50 hover:bg-amber-500 text-zinc-400 hover:text-black font-bold rounded-2xl border border-zinc-800 hover:border-amber-400 transition-all duration-500 shadow-xl"
-                  >
-                    <RefreshCw className="group-hover:rotate-180 transition-transform duration-700" size={20} />
-                    Load More Projects
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+        {isLoading ? (
+          <div className="py-32 flex flex-col items-center text-zinc-600">
+            <Loader2 className="animate-spin mb-4" size={40} />
+            <p className="text-xs font-bold tracking-widest uppercase">Fetching Projects...</p>
+          </div>
+        ) : (
+          categories.map(renderShowcase)
+        )}
       </div>
 
       {/* MODALS */}
@@ -748,6 +738,16 @@ const Work: React.FC = () => {
                 </div>
 
                 <div className="space-y-4">
+                  <select 
+                    disabled={isUploading}
+                    className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 focus:border-amber-500 outline-none"
+                    value={newProject.category}
+                    onChange={e => setNewProject({...newProject, category: e.target.value})}
+                  >
+                    {categories.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
                   <input required disabled={isUploading} placeholder="Title" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 focus:border-amber-500 outline-none" value={newProject.title} onChange={e => setNewProject({...newProject, title: e.target.value})} />
                   <textarea disabled={isUploading} placeholder="Description" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 h-24 resize-none outline-none" value={newProject.description} onChange={e => setNewProject({...newProject, description: e.target.value})} />
                   <input disabled={isUploading} placeholder="Tags (Commercial, AI, VFX)" className="w-full bg-zinc-950 border border-zinc-800 rounded-xl px-4 py-3 outline-none" value={newProject.tags} onChange={e => setNewProject({...newProject, tags: e.target.value})} />
