@@ -2,7 +2,8 @@
 import React from 'react';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
-import Tools from './components/Tools';
+import Intro from './components/Intro';
+import Skills from './components/Skills';
 import Work from './components/Work';
 import Footer from './components/Footer';
 
@@ -12,7 +13,8 @@ const App: React.FC = () => {
       <Navbar />
       <main>
         <Hero />
-        <Tools />
+        <Intro />
+        <Skills />
         <Work />
       </main>
       <Footer />
