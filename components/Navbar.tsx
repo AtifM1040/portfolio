@@ -20,6 +20,22 @@ const Navbar: React.FC = () => {
     }
   };
 
+  const [clickCount, setClickCount] = useState(0);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setClickCount(0), 5000);
+    return () => clearTimeout(timer);
+  }, [clickCount]);
+
+  const handleBrandClick = () => {
+    const newCount = clickCount + 1;
+    setClickCount(newCount);
+    if (newCount >= 5) {
+      setClickCount(0);
+      window.dispatchEvent(new CustomEvent('trigger-admin-login'));
+    }
+  };
+
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
       isScrolled ? 'py-4' : 'py-8'
@@ -29,7 +45,7 @@ const Navbar: React.FC = () => {
           isScrolled ? 'bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 shadow-2xl' : 'bg-transparent'
         }`}>
           <button 
-            onClick={() => scrollToSection('home')}
+            onClick={handleBrandClick}
             className="text-xl font-bold tracking-tighter"
           >
             ATIF<span className="text-zinc-500"> MUSTAFA.</span>
