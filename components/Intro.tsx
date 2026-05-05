@@ -64,7 +64,7 @@ const Intro: React.FC = () => {
               className="relative rounded-[2.5rem] overflow-hidden border-4 border-white/10 shadow-2xl h-[450px] aspect-[4/5]"
             >
               <img 
-                src="https://images.unsplash.com/photo-1633332755192-727a05c4013d?q=80&w=2080&auto=format&fit=crop" 
+                src="https://euznogckxiczgwkjxyuk.supabase.co/storage/v1/object/sign/assests/Profile%20Pic.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV9kYjdiY2IzMy0wMjBiLTQ3YzQtOTBkOS04ODUzNDFjMTI3ODYiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJhc3Nlc3RzL1Byb2ZpbGUgUGljLnBuZyIsImlhdCI6MTc3ODAxMjM1NCwiZXhwIjoyMDkzMzcyMzU0fQ.IOQfhrQCFrcOpIEuVEVzImPnLXBxXKjGSDhqJkHirts" 
                 alt="Atif Mustafa"
                 className="w-full h-full object-cover"
               />
