@@ -9,6 +9,8 @@ export interface Project {
   thumbnail: string;
   tags: string[];
   sortOrder?: number;
+  category?: string;
+  isHero?: boolean;
 }
 
 export interface Tool {
