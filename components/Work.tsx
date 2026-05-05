@@ -70,7 +70,7 @@ const ProjectCard: React.FC<{
 }) => {
   const [isPaused, setIsPaused] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(isHero);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const isCurrentlyActive = activeId === project.id;
