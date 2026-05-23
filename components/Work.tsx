@@ -461,6 +461,25 @@ const Work: React.FC = () => {
       const tUrl = await uploadToStorage(newProject.thumbFile, 'thumbs', 'thumb.jpg');
 
       const maxSort = projects.length > 0 ? Math.max(...projects.map(p => p.sortOrder || 0)) : 0;
+      const targetCategory = isChangingHero ? activeCategory : newProject.category;
+
+      const categoryProjects = projects.filter(p => p.category === targetCategory);
+      const hasExplicitHero = categoryProjects.some(p => p.isHero);
+
+      let shouldInsertAsHero = isChangingHero;
+      
+      if (!isChangingHero) {
+        if (categoryProjects.length === 0) {
+          // If first project in the category, make it the explicit hero
+          shouldInsertAsHero = true;
+        } else if (!hasExplicitHero) {
+          // Lock in the existing fallback hero so it remains constant and unchanged.
+          const oldestProject = [...categoryProjects].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))[0];
+          if (oldestProject) {
+            await supabase.from('projects').update({ is_hero: true }).eq('id', oldestProject.id);
+          }
+        }
+      }
 
       const { error } = await supabase.from('projects').insert([{
         title: newProject.title,
@@ -469,8 +488,8 @@ const Work: React.FC = () => {
         thumb_url: tUrl,
         tags: newProject.tags.split(',').map(t => t.trim()).filter(Boolean),
         sort_order: maxSort + 1,
-        is_hero: isChangingHero,
-        category: isChangingHero ? activeCategory : newProject.category
+        is_hero: shouldInsertAsHero,
+        category: targetCategory
       }]);
 
       if (error) throw error;
@@ -713,7 +732,7 @@ const Work: React.FC = () => {
             <motion.div initial={{ scale: 0.9, y: 20 }} animate={{ scale: 1, y: 0 }} className="bg-zinc-900 border border-zinc-800 p-8 rounded-[2.5rem] w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-8">
                 <h3 className="text-3xl font-bold">New Work</h3>
-                {!isUploading && <button onClick={() => setIsAdding(false)}><X size={24} className="text-zinc-500 hover:text-white" /></button>}
+                {!isUploading && <button onClick={() => { setIsAdding(false); setIsChangingHero(false); }}><X size={24} className="text-zinc-500 hover:text-white" /></button>}
               </div>
               
               <form onSubmit={handleAddProject} className="space-y-6">
