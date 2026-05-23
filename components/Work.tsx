@@ -510,10 +510,19 @@ const Work: React.FC = () => {
 
   const renderShowcase = (category: string) => {
     const categoryProjects = projects.filter(p => p.category === category);
-    // Sort category projects by sortOrder ascending to find the oldest/default fallback
-    const sortedForFallback = [...categoryProjects].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-    const hero = categoryProjects.find(p => p.isHero) || sortedForFallback[0];
-    const others = categoryProjects.filter(p => p.id !== hero?.id);
+    
+    // 1. Explicit hero (is_hero = true)
+    let hero = categoryProjects.find(p => p.isHero);
+    
+    // 2. Fallback: if no explicit hero, use the oldest project (lowest sortOrder)
+    if (!hero && categoryProjects.length > 0) {
+      hero = [...categoryProjects].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))[0];
+    }
+    
+    // 3. Others: All non-hero projects, sorted by sortOrder DESC (newest first)
+    const others = categoryProjects
+      .filter(p => p.id !== hero?.id)
+      .sort((a, b) => (b.sortOrder || 0) - (a.sortOrder || 0));
 
     return (
       <div key={category} className="mb-24 last:mb-0">
