@@ -73,7 +73,7 @@ const ProjectCard: React.FC<{
   const [isMuted, setIsMuted] = useState(isHero);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const isCurrentlyActive = activeId === project.id;
+  const isCurrentlyActive = activeId === project.id || isHero;
 
   useEffect(() => {
     if (isCurrentlyActive && videoRef.current) {
@@ -91,7 +91,7 @@ const ProjectCard: React.FC<{
     } else if (!isCurrentlyActive && videoRef.current) {
       videoRef.current.pause();
     }
-  }, [isCurrentlyActive]);
+  }, [isCurrentlyActive, project.id]);
 
   const togglePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -314,6 +314,15 @@ const Work: React.FC = () => {
   const loginInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (isAdding) {
+      setNewProject(prev => ({
+        ...prev,
+        category: activeCategory
+      }));
+    }
+  }, [isAdding, activeCategory]);
+
+  useEffect(() => {
     fetchProjects();
 
     const handleLoginTrigger = () => {
@@ -463,20 +472,38 @@ const Work: React.FC = () => {
       const maxSort = projects.length > 0 ? Math.max(...projects.map(p => p.sortOrder || 0)) : 0;
       const targetCategory = isChangingHero ? activeCategory : newProject.category;
 
-      const categoryProjects = projects.filter(p => p.category === targetCategory);
-      const hasExplicitHero = categoryProjects.some(p => p.isHero);
-
       let shouldInsertAsHero = isChangingHero;
-      
-      if (!isChangingHero) {
-        if (categoryProjects.length === 0) {
-          // If first project in the category, make it the explicit hero
-          shouldInsertAsHero = true;
-        } else if (!hasExplicitHero) {
-          // Lock in the existing fallback hero so it remains constant and unchanged.
-          const oldestProject = [...categoryProjects].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))[0];
-          if (oldestProject) {
-            await supabase.from('projects').update({ is_hero: true }).eq('id', oldestProject.id);
+
+      if (isChangingHero) {
+        // Safe clear: unset any existing hero for this category first in Supabase
+        await supabase
+          .from('projects')
+          .update({ is_hero: false })
+          .eq('category', targetCategory)
+          .eq('is_hero', true);
+      } else {
+        // Query database authoritatively to see the exact state of projects in this category
+        const { data: dbProjects, error: dbError } = await supabase
+          .from('projects')
+          .select('id, is_hero, sort_order')
+          .eq('category', targetCategory);
+
+        if (!dbError && dbProjects) {
+          if (dbProjects.length === 0) {
+            // First ever project in this category: must be hero
+            shouldInsertAsHero = true;
+          } else {
+            // There are already projects in this category: definitely not hero!
+            shouldInsertAsHero = false;
+
+            // Ensure the category has an explicit hero locked in
+            const hasHero = dbProjects.some(p => p.is_hero);
+            if (!hasHero) {
+              const oldest = [...dbProjects].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0))[0];
+              if (oldest) {
+                await supabase.from('projects').update({ is_hero: true }).eq('id', oldest.id);
+              }
+            }
           }
         }
       }
@@ -493,17 +520,6 @@ const Work: React.FC = () => {
       }]);
 
       if (error) throw error;
-
-      // If we were changing hero, we should unset the previous hero for THIS category
-      if (isChangingHero && projects.length > 0) {
-        const oldHero = projects.find(p => p.isHero && p.category === activeCategory);
-        if (oldHero) {
-          await supabase.from('projects').update({ 
-            is_hero: false,
-            sort_order: maxSort 
-          }).eq('id', oldHero.id);
-        }
-      }
 
       await fetchProjects();
       setIsAdding(false);
