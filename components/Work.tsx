@@ -37,7 +37,7 @@ const ADMIN_PASSCODE = "ATIF2000";
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-const categories = ["Stop Scroll Ads", "Beauty Product Ads", "UGC / VSL"];
+const categories = ["AI (Artificial Intelligence)", "Stop Scroll Ads", "Beauty Product Ads", "UGC / VSL"];
 
 const ProjectCard: React.FC<{ 
   project: Project; 
